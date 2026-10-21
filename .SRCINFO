@@ -1,0 +1,22 @@
+pkgbase = foo2hbpl1
+	pkgdesc = CUPS driver for HBPLv1 colour lasers (Dell 1350cnw/1250c/C1660w/C1760nw, Xerox Phaser 6000/6010, Fuji Xerox CP105b)
+	pkgver = r5bf0142
+	pkgrel = 2
+	url = https://github.com/mikerr/foo2zjs
+	arch = x86_64
+	arch = aarch64
+	arch = armv7h
+	arch = i686
+	license = GPL-2.0-or-later
+	makedepends = git
+	makedepends = gcc
+	makedepends = make
+	depends = ghostscript
+	depends = cups
+	depends = cups-filters
+	depends = bc
+	options = !debug
+	source = git+https://github.com/mikerr/foo2zjs.git#commit=5bf0142d1e3d4363684608ac42933510d3b66e27
+	sha256sums = SKIP
+
+pkgname = foo2hbpl1
