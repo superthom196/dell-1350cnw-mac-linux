@@ -1,8 +1,8 @@
-# Dell 1350cnw on modern Linux
+# Dell 1350cnw on modern Linux and macOS
 
-A working, open-source driver setup for the **Dell 1350cnw** colour laser printer (and its relatives) on current Linux systems, with full colour and A4/Letter printing over the network.
+A working, open-source driver setup for the **Dell 1350cnw** colour laser printer (and its relatives) on current Linux and macOS systems, with full colour and A4/Letter printing over the network.
 
-Dell never released a Linux driver for this printer. Xerox's old Phaser 6000/6010 Linux driver can no longer be downloaded, and the standard `foo2zjs` driver doesn't speak this printer's language. This repo packages the open-source **foo2hbpl1** driver, which does.
+Dell never released a Linux driver for this printer, and its Mac driver is 32-bit, so it hasn't run since macOS Catalina. Xerox's old Phaser 6000/6010 Linux driver can no longer be downloaded, and the standard `foo2zjs` driver doesn't speak this printer's language. This repo packages the open-source **foo2hbpl1** driver, which does.
 
 ## Tested
 
@@ -10,11 +10,12 @@ Dell never released a Linux driver for this printer. Xerox's old Phaser 6000/601
 |---|---|
 | Printer | Dell 1350cnw, firmware 201510201256, network firmware 17.12 |
 | Connection | Wi-Fi, raw socket (port 9100) |
-| OS | Arch Linux ([Omarchy](https://omarchy.org)), x86_64, CUPS 2.4, Ghostscript 10.08 |
-| Result | CUPS test page and colour test pages print correctly, A4, colour |
+| Linux | Arch Linux ([Omarchy](https://omarchy.org)), x86_64, CUPS 2.4, Ghostscript 10.08 |
+| macOS | macOS 26.5 (Tahoe), Intel x86_64. No Ghostscript needed |
+| Result | CUPS test page and colour test pages print correctly, A4, colour. On macOS, 4pt text is legible |
 | Date | October 2026 |
 
-Other distributions should work with the manual steps below, but I've only tested Arch.
+Other Linux distributions should work with the manual steps below, but I've only tested Arch. The macOS binaries are universal (Intel and Apple Silicon); Apple Silicon is untested.
 
 ## Why the usual drivers fail
 
@@ -37,6 +38,48 @@ Upstream ([mikerr/foo2zjs](https://github.com/mikerr/foo2zjs)) lists these as wo
 Added here: **Dell 1350cnw**, tested. The Xerox Phaser 6000 and 6010 belong to the same family and will probably work too, but I haven't confirmed them.
 
 If the printer's own configuration page says "HBPL" and the HBPLv2 driver fails with error 016-720, it's probably HBPLv1.
+
+## Install on macOS
+
+Everything for the Mac is in the [`macos/`](macos) folder. It doesn't need Homebrew or Ghostscript. macOS renders each page with its own built-in PDF renderer, a small converter turns the result into what foo2hbpl1 expects, and foo2hbpl1 sends it to the printer.
+
+**Easiest:** download `dell-1350cnw-macos.zip` from the [latest release](https://github.com/superthom196/dell-1350cnw-linux/releases/latest). It includes prebuilt universal binaries. Unzip it, then in Terminal:
+
+```bash
+cd ~/Downloads/dell-1350cnw-macos
+sudo sh install.sh 192.168.0.201
+```
+
+Replace the IP address with your printer's (see [Find the printer's IP address](#1-find-the-printers-ip-address)). The printer then appears as **Dell_1350cnw** in System Settings → Printers & Scanners and in every Print dialog. It defaults to A4 colour; change the paper size or switch to Monochrome in the Print dialog.
+
+**From source:** you need the Xcode Command Line Tools (`xcode-select --install`). The installer builds the binaries if `bin/` is missing.
+
+```bash
+git clone https://github.com/superthom196/dell-1350cnw-linux.git
+cd dell-1350cnw-linux/macos
+sudo sh install.sh 192.168.0.201
+```
+
+An optional second argument sets the queue name: `sudo sh install.sh 192.168.0.201 Office_Printer`.
+
+To uninstall:
+
+```bash
+sudo sh uninstall.sh
+```
+
+### What gets installed
+
+Everything goes in `/Library/Printers/foo2hbpl1/`:
+
+- `foo2hbpl1`, the HBPLv1 driver (same source as the Linux package)
+- `rastertoppm`, which converts macOS's CUPS raster to the CMYK image foo2hbpl1 reads. It also pads each page to the full paper size, because foo2hbpl1 picks the paper size from the image dimensions
+- `hbpl1-filter`, the CUPS filter that connects the two
+- `Dell-1350cnw.ppd`, the printer profile
+
+### Why the Mac version does its own colour conversion
+
+foo2hbpl1's built-in RGB-to-CMYK conversion prints pure black as 100% cyan + magenta + yellow + black. The four toner layers never line up perfectly, so text comes out fuzzy. `rastertoppm` does the conversion instead, so black and greys use black toner only. Text is crisp down to 4pt. (On Linux this doesn't arise, because Ghostscript does the CMYK conversion.)
 
 ## Install on Arch Linux (and Arch-based: Omarchy, EndeavourOS, Manjaro…)
 
@@ -86,7 +129,7 @@ sudo install -Dm644 PPD/Fuji_Xerox-DocuPrint_CP105.ppd \
 
 The binaries go in `/usr/bin` because CUPS filters don't search `/usr/local/bin`. These file names are chosen not to overlap with mainline foo2zjs, which doesn't include `foo2hbpl1`. I haven't checked this against every distribution's package.
 
-## Add the printer
+## Add the printer on Linux
 
 ### 1. Find the printer's IP address
 
@@ -131,6 +174,8 @@ lp -d Dell_1350cnw /usr/share/cups/data/testprint
 |---|---|
 | Printer feeds a sheet, then stops; log shows **016-720 PDL Request Data Violation** | Wrong driver (HBPLv2 / foo2hbpl2). Use the foo2hbpl1 profile from this package. |
 | Nothing happens at all | Wrong IP, or the printer is asleep. Check with the reachability command above and look at the printer's web page at `http://<ip>/`. Its **Printer Events** page shows error codes. |
+| macOS: job stops with "Filter failed" | Check `/var/log/cups/error_log`. If you installed from a downloaded zip and macOS blocked the binaries, run `sudo xattr -dr com.apple.quarantine /Library/Printers/foo2hbpl1`. `install.sh` already does this. |
+| macOS: text looks fuzzy | You're probably on an old copy that used foo2hbpl1's own colour conversion. Reinstall from this repo. |
 | Job fails in colour when calling `foo2hbpl1-wrapper` by hand with only `-c` | Bare `-c` uses a colour-calibration mode whose files this package doesn't include. Pass the same options CUPS does: `-c -C10 -Gnone.icm`. Printing through CUPS isn't affected. |
 
 To test the driver without CUPS, which is handy for debugging:
@@ -145,8 +190,10 @@ cat job.hbpl > /dev/tcp/192.168.0.201/9100    # bash only
 - **Dave Coffin** reverse-engineered HBPLv1 and wrote `foo2hbpl1`.
 - **Rick Richardson** wrote the [foo2zjs](https://foo2zjs.linkevich.net/) driver framework.
 - **[mikerr/foo2zjs](https://github.com/mikerr/foo2zjs)** maintains the HBPLv1 fork this package builds from.
+- **Markus Kuhn** wrote [JBIG-KIT](https://www.cl.cam.ac.uk/~mgk25/jbigkit/); `macos/src/jbig/` is a copy of its library.
+- The macOS printer profile is adapted from [macos2/HBPLv1.0-Printer-driver](https://github.com/macos2/HBPLv1.0-Printer-driver).
 - [Dechifro's HBPL page](http://www.dechifro.org/hbpl/) has background on the printer language.
 
 ## License
 
-This repository's packaging files are licensed under GPL-2.0-or-later, the same as the foo2zjs driver they build. See [LICENSE](LICENSE).
+This repository's packaging files and macOS code are licensed under GPL-2.0-or-later, the same as the foo2zjs driver they build. See [LICENSE](LICENSE).

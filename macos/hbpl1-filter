@@ -1,0 +1,32 @@
+#!/bin/sh
+# CUPS filter for the Dell 1350cnw (HBPL v1): CUPS raster in, HBPL out.
+# macOS's own cgpdftoraster renders the pages; no Ghostscript needed.
+# Usage (by CUPS): hbpl1-filter job user title copies options [file]
+
+D=/Library/Printers/foo2hbpl1
+COPIES="${4:-1}"
+MEDIA=1
+
+for o in $5; do
+    case "$o" in
+    MediaType=bond) MEDIA=2 ;;
+    MediaType=lwcard) MEDIA=3 ;;
+    MediaType=lwgcard) MEDIA=4 ;;
+    MediaType=labels) MEDIA=5 ;;
+    MediaType=envelope) MEDIA=6 ;;
+    MediaType=recycled) MEDIA=7 ;;
+    esac
+done
+
+IN="$6"
+if [ -z "$IN" ]; then
+    IN="${TMPDIR:-/tmp}/hbpl1-$$.ras"
+    cat >"$IN"
+    trap 'rm -f "$IN"' EXIT
+fi
+
+i=0
+while [ $i -lt "$COPIES" ]; do
+    "$D/rastertoppm" "$IN" | "$D/foo2hbpl1" -m "$MEDIA" -J "$3" -U "$2" || exit 1
+    i=$((i + 1))
+done
