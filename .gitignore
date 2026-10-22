@@ -1,6 +1,6 @@
-/src/
-/pkg/
-*.pkg.tar.*
-build.log
-/foo2zjs/
+linux/src/
+linux/pkg/
+linux/foo2zjs/
+linux/*.pkg.tar.*
+linux/build.log
 macos/bin/
