@@ -108,6 +108,14 @@ Everything for Linux is in the [`linux/`](linux) folder.
 
 The package is self-contained. It doesn't need `foo2zjs` or `foo2zjs-nightly` from the AUR.
 
+**Easiest (x86_64):** download `foo2hbpl1-r5bf0142-2-x86_64.pkg.tar.zst` from the [latest release](https://github.com/superthom196/dell-1350cnw-mac-linux/releases/latest) and install it:
+
+```bash
+sudo pacman -U foo2hbpl1-r5bf0142-2-x86_64.pkg.tar.zst
+```
+
+**From source** (any architecture):
+
 ```bash
 git clone https://github.com/superthom196/dell-1350cnw-mac-linux.git
 cd dell-1350cnw-mac-linux/linux
